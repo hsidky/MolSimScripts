@@ -15,8 +15,8 @@ parser.add_argument(
 	default=0
 )
 parser.add_argument(
-	"-f", 
-	"--frames", 
+	"-k", 
+	"--skip", 
 	help="Dump every 'n'th frame", 
 	type=int, 
 	default=1
@@ -50,8 +50,7 @@ parser.add_argument(
 	"-o",
 	"--output",
 	help="Output folder name/file prefix",
-	type=str,
-	nargs=1
+	type=str
 )
 
 # Parse arguments
@@ -59,7 +58,7 @@ args = parser.parse_args()
 
 # Definitions
 frame = 0  # current frame 
-n = args.frames  # Dump every "nth" frame
+n = args.skip  # Dump every "nth" frame
 titles = args.titles.split()
 nbegin = 0  # Are we at the beginning of a new frame?
 fmax = args.n  # Maximum number of frames to dump
@@ -67,6 +66,10 @@ dirout = path.splitext(args.input)[0]  # Folder name
 prefix = "frame"  # File prefix
 vector = args.vector  # Vector to write
 scalars = args.scalars  # Scalars to write
+
+# Set output directory if needed
+if args.output is not None:
+	dirout = args.output
 
 # Calculate required number of titles
 ntit = 0
@@ -144,7 +147,7 @@ with open(args.input, 'r') as f:
 			continue
 
 		# If we maxed out the number of frames, quit
-		if frame > fmax:
+		if fmax and frame > fmax:
 			break
 
 		# Just in case we check that we're not at frame 0.
