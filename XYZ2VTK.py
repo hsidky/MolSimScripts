@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-''' XYZ2VTK.py - Takes in an XYZ file containing coordinates 
-    and vectors then converts them into VTK structured grids 
+''' XYZ2VTK.py - Takes in an XYZ file containing coordinates
+    and vectors then converts them into VTK structured grids
     (snapshots) for use in ParaView.
 '''
 import argparse
@@ -15,10 +15,10 @@ parser.add_argument(
 	default=0
 )
 parser.add_argument(
-	"-k", 
-	"--skip", 
-	help="Dump every 'n'th frame", 
-	type=int, 
+	"-k",
+	"--skip",
+	help="Dump every 'n'th frame",
+	type=int,
 	default=1
 )
 parser.add_argument(
@@ -28,7 +28,7 @@ parser.add_argument(
 	type=str,
 	default=""
 )
-parser.add_argument( 
+parser.add_argument(
 	"--vector",
 	help="Column positions of vector data",
 	type=int,
@@ -57,7 +57,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 # Definitions
-frame = 0  # current frame 
+frame = 0  # current frame
 n = args.skip  # Dump every "nth" frame
 titles = args.titles.split()
 nbegin = 0  # Are we at the beginning of a new frame?
@@ -93,7 +93,7 @@ vdata = []  # Vector data
 sdata = []  # Scalar data
 species = []  # Species data
 
-# Open input file 
+# Open input file
 with open(args.input, 'r') as f:
 	for line in f:
 		# If split is 1 we are at a new frame.
@@ -101,7 +101,7 @@ with open(args.input, 'r') as f:
 			nbegin = 1
 			fname = path.join(dirout, "{0}{num:04d}.vtk".format(prefix, num=frame))
 
-			# Write frame data if available 
+			# Write frame data if available
 			if len(pdata):
 				with open(fname, "w") as fout:
 					fout.write("# vtk DataFile Version 2.0\n")
@@ -120,7 +120,7 @@ with open(args.input, 'r') as f:
 						for vline in vdata:
 							fout.write("{0} {1} {2}\n".format(vline[0], vline[1], vline[2]))
 
-					# Add species data 
+					# Add species data
 					fout.write("SCALARS species float\n")
 					fout.write("LOOKUP_TABLE default\n")
 					for sline in sdata:
@@ -135,7 +135,7 @@ with open(args.input, 'r') as f:
 			frame += 1
 			continue
 
-		# If we are at the beginning of a line, skip 
+		# If we are at the beginning of a line, skip
 		# this frame since it's the box vecotrs.
 		if nbegin is 1:
 			nbegin = 0
@@ -169,6 +169,6 @@ with open(args.input, 'r') as f:
 			if data[0] not in species:
 				species.append(data[0])
 
-			slist = []	
+			slist = []
 			slist.append(species.index(data[0]))
 			sdata.append(slist)
