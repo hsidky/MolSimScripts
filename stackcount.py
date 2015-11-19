@@ -1,26 +1,71 @@
 #!/usr/bin/env python
 
 import numpy as np
+import numpy.linalg as linalg
 
 # Input file name 
 
-xyzfile = 'nvt-140.xyz'
+xyzfile = 'testsnap.xyz'
+
+bdim = np.array([135.0, 135.0, 135.0])
+
+def anint(x):
+	if x >= 0:
+		return np.floor(x + 0.5)
+	else:
+		return np.ceil(x - 0.5)
 
 
-def compute_properties(x, y, z, ux, uy, uz):
+def minimum_image(rij):
+	rij[0] -= bdim[0]*anint(rij[0]/bdim[0])
+	rij[1] -= bdim[1]*anint(rij[1]/bdim[1])
+	rij[2] -= bdim[2]*anint(rij[2]/bdim[2])
+
+
+def compute_properties(x, u):
 	stacks = []
-	
+	for i in range(x.shape[0]):
+		#print('Processing particle {0}. Stack count: {1}'.format(i, len(stacks)))
+		xi = x[i,:]
+		ui = u[i,:]
+		found = False # Have we found a stack?
+		for stack in stacks:
+			for j in stack:
+				xj = x[j,:]
+				uj = u[j,:] 
 
-def process_frame(f, n, x, y, z, ux, uy, uz):
+				# minimum image convention.
+				rij = xi - xj
+				minimum_image(rij)
+
+				if linalg.norm(rij) <= 8.0:
+					stack.append(i)
+					found = True
+					break
+
+			if found is True:
+				break
+
+		# If we still haven't found an appropriate stack, 
+		# create a new one.
+		if found is False:
+			stacks.append([i])
+
+	# Mean stack length. 
+	msl = np.mean([len(s) for s in stacks])
+	print('Average stack length: {0}'.format(msl))
+	i = 0
+	for stack in stacks:
+		i += 1
+		for j in stack:
+			print('GB{0} {1} {2} {3}'.format(i, x[j,0], x[j,1], x[j,2]))
+
+def process_frame(f, n, x, u):
 	i = 0
 	for line in f:
 		lsplit = line.split()
-		x[i] = lsplit[1]
-		y[i] = lsplit[2]
-		z[i] = lsplit[3]
-		ux[i] = lsplit[4]
-		uy[i] = lsplit[5]
-		uz[i] = lsplit[6]
+		x[i,:] = lsplit[1:4]
+		u[i,:] = lsplit[4:7]
 		i += 1
 		if i == n:
 			return
@@ -38,18 +83,14 @@ def read_xyz(filename):
 			
 			# Initialize coordinates and directors
 			# and get frame data.
-			x = np.zeros((pcount, 1))
-			y = np.zeros((pcount, 1))
-			z = np.zeros((pcount, 1))
-			ux = np.zeros((pcount, 1))
-			uy = np.zeros((pcount, 1))
-			uz = np.zeros((pcount, 1))
-			process_frame(f, pcount, x, y, z, ux, uy, uz)
+			x = np.zeros((pcount, 3)) # Positions
+			u = np.zeros((pcount, 3)) # Directors
+			process_frame(f, pcount, x, u)
 
-			compute_properties(x, y, z, ux, uy, uz)
-			# print('Processed frame {0}...'.format(frame))
+			compute_properties(x, u)
+			print('Processed frame {0}...'.format(frame))
 			frame += 1
-			if frame is 150:
+			if frame is 1:
 				return
 
 read_xyz(xyzfile)
