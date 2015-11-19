@@ -24,6 +24,45 @@ def minimum_image(rij):
 
 def compute_properties(x, u):
 	stacks = []
+	ids = range(x.shape[0])
+	while ids:
+		# Get the first element from the list of candidates 
+		# and add to new stack.
+		i = ids[0]
+		stack = [i]
+		ids.remove(i)
+
+		prevl = 0
+		currl = len(stack)
+		while prevl != currl:
+			prevl = currl
+			for j in ids[:]:
+				xj = x[j, :]
+				for k in stack:
+					xk = x[k, :]
+					rjk = xj - xk
+					minimum_image(rjk)
+
+					if linalg.norm(rjk) <= 5.0:
+						stack.append(j)
+						ids.remove(j)
+						break
+
+			currl = len(stack)
+
+		# print('Appended stack of length {0}'.format(currl))
+		stacks.append(stack)
+
+	i = 0
+	for stack in stacks:
+		i += 1
+		for j in stack:
+			print('GB{0} {1} {2} {3}'.format(i, x[j,0], x[j,1], x[j,2]))
+
+			
+"""
+def compute_properties(x, u):
+	stacks = []
 	for i in range(x.shape[0]):
 		#print('Processing particle {0}. Stack count: {1}'.format(i, len(stacks)))
 		xi = x[i,:]
@@ -59,6 +98,7 @@ def compute_properties(x, u):
 		i += 1
 		for j in stack:
 			print('GB{0} {1} {2} {3}'.format(i, x[j,0], x[j,1], x[j,2]))
+"""
 
 def process_frame(f, n, x, u):
 	i = 0
