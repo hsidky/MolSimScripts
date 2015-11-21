@@ -2,10 +2,12 @@
 
 import numpy as np
 import numpy.linalg as linalg
+import os
+import sys
 
 # Input file name 
-
-xyzfile = 'testsnap.xyz'
+xyzfile = '{0}.xyz'.format(os.path.splitext(sys.argv[1])[0])
+outfile = '{0}.stacks'.format(os.path.splitext(xyzfile)[0])
 
 bdim = np.array([135.0, 135.0, 135.0])
 
@@ -43,7 +45,7 @@ def compute_properties(x, u):
 					rjk = xj - xk
 					minimum_image(rjk)
 
-					if linalg.norm(rjk) <= 5.0:
+					if linalg.norm(rjk) <= 5.5:
 						stack.append(j)
 						ids.remove(j)
 						break
@@ -53,52 +55,9 @@ def compute_properties(x, u):
 		# print('Appended stack of length {0}'.format(currl))
 		stacks.append(stack)
 
-	i = 0
-	for stack in stacks:
-		i += 1
-		for j in stack:
-			print('GB{0} {1} {2} {3}'.format(i, x[j,0], x[j,1], x[j,2]))
+	with open(outfile, 'a') as f:
+		f.write('{0}\n'.format(' '.join([str(len(s)) for s in stacks])))
 
-			
-"""
-def compute_properties(x, u):
-	stacks = []
-	for i in range(x.shape[0]):
-		#print('Processing particle {0}. Stack count: {1}'.format(i, len(stacks)))
-		xi = x[i,:]
-		ui = u[i,:]
-		found = False # Have we found a stack?
-		for stack in stacks:
-			for j in stack:
-				xj = x[j,:]
-				uj = u[j,:] 
-
-				# minimum image convention.
-				rij = xi - xj
-				minimum_image(rij)
-
-				if linalg.norm(rij) <= 8.0:
-					stack.append(i)
-					found = True
-					break
-
-			if found is True:
-				break
-
-		# If we still haven't found an appropriate stack, 
-		# create a new one.
-		if found is False:
-			stacks.append([i])
-
-	# Mean stack length. 
-	msl = np.mean([len(s) for s in stacks])
-	print('Average stack length: {0}'.format(msl))
-	i = 0
-	for stack in stacks:
-		i += 1
-		for j in stack:
-			print('GB{0} {1} {2} {3}'.format(i, x[j,0], x[j,1], x[j,2]))
-"""
 
 def process_frame(f, n, x, u):
 	i = 0
@@ -110,6 +69,7 @@ def process_frame(f, n, x, u):
 		if i == n:
 			return
 
+
 def read_xyz(filename):
 	frame = 0
 	pcount = 0
@@ -118,8 +78,12 @@ def read_xyz(filename):
 			# Get particle count.
 			pcount = int(line.split()[0])
 
-			# Skip comment line.
+			# Get dimensions from next line.
 			line = f.next()
+			lsplit = line.split()
+			bdim[0] = float(lsplit[1])
+			bdim[1] = float(lsplit[5])
+			bdim[2] = float(lsplit[9])
 			
 			# Initialize coordinates and directors
 			# and get frame data.
@@ -130,7 +94,6 @@ def read_xyz(filename):
 			compute_properties(x, u)
 			print('Processed frame {0}...'.format(frame))
 			frame += 1
-			if frame is 1:
-				return
+
 
 read_xyz(xyzfile)
