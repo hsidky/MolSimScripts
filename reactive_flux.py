@@ -1,14 +1,50 @@
 #!/afs/crc.nd.edu/x86_64_linux/python/3.4.0/gcc-4.8.0/bin/python3
 ''' reactive_flux.py - Calculates the normalized reactive flux, k(t),
-	from a set of GROMACS simulations started at the free energy barrier.
+	from a set of GROMACS simulations started at the maximum of the 
+	free energy barrier. Currently supports bimolecular reactions.
 '''
 import os
 import numpy as np
 import math
-import sys
 import re
 
-## INPUTS ##
+def usage():
+	print("usage: python3 reactive_flux.py num_simulations num_particles box_x box_y box_z")
+	print("num_simulations - number of independent simulations to analyze.")
+	print("num_particles - number of particles to track in time.")
+	print("box_x, box_y, box_z - box vectors (nanometers)")
+	print("\nAfter basic system information is parsed, you will be asked to input molecular information:")
+	print("first molecule: particle_id1 mass1 particle_id2 mass2")
+	print("particle_id1 - the id of the first particle to track.")
+	print("mass1 - the mass of the first particle to track.")
+
+
+## USER INPUT ##
+# Try to parse system info, otherwise give the user the usage()
+try:
+	molecule1 = []
+	molecule2 = []
+	num_simulations = int(input("Number of simulations to analyze: "))
+	num_particles   = int(input("Total particles in a frame: ")) # This may not be necessary.
+	box_x           = float(input("Box Vector X (nm) "))
+	box_y           = float(input("Box Vector Y (nm) "))
+	box_z           = float(input("Box Vector Z (nm) "))
+	print("Basic system information read in successfully.")
+	print("Now, I need information about the two molecules to track.")
+	for molecule in range(0, 2):
+		print("Molecule {0}, Atomic Constituents:".format(molecule+1))
+		answer = "y"
+		while answer == "y":
+			atom_id = int(input("Atom ID?"))
+			mass    = float(input("Atom Mass"))
+			if molecule == 0:
+				molecule1.append([atom_id, mass])
+			else:
+				molecule2.append([atom_id, mass])
+			answer = input("Add another atom to molecule {0}".format(molecule+1))
+except:
+	usage()
+	exit()
 # Mass of molecules
 o_mass = 16.0
 u_mass = 238.0
@@ -123,7 +159,8 @@ def list_divide(list1, list2):
 	return final_list
 
 def normalize(list1):
-	final_list = []
+	fi
+	nal_list = []
 	normalization = list1[0]
 	for i in range(0, len(list1)):
 		final_list.append(list1[i]/normalization)
