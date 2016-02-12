@@ -9,7 +9,7 @@ import math
 import re
 
 def usage():
-	print("usage: python3 reactive_flux.py num_simulations num_particles box_x box_y box_z")
+	print("Something went wrong.")
 	print("num_simulations - number of independent simulations to analyze.")
 	print("num_particles - number of particles to track in time.")
 	print("box_x, box_y, box_z - box vectors (nanometers)")
@@ -26,6 +26,8 @@ try:
 	molecule2 = []
 	num_simulations = int(input("Number of simulations to analyze: "))
 	num_particles   = int(input("Total particles in a frame: ")) # This may not be necessary.
+	num_frames      = int(input("Number of frames to analyze: ")) # Also may not be nece
+	time_step       = float(input("Time step: "))
 	box_x           = float(input("Box Vector X (nm) "))
 	box_y           = float(input("Box Vector Y (nm) "))
 	box_z           = float(input("Box Vector Z (nm) "))
@@ -35,44 +37,25 @@ try:
 		print("Molecule {0}, Atomic Constituents:".format(molecule+1))
 		answer = "y"
 		while answer == "y":
-			atom_id = int(input("Atom ID?"))
-			mass    = float(input("Atom Mass"))
+			atom_id = int(input("Atom ID: "))
+			mass    = float(input("Atom Mass: "))
 			if molecule == 0:
 				molecule1.append([atom_id, mass])
 			else:
 				molecule2.append([atom_id, mass])
 			answer = input("Add another atom to molecule {0}".format(molecule+1))
+	print("Cool - everything look's good.  We're ready to go.")
 except:
 	usage()
 	exit()
-# Mass of molecules
-o_mass = 16.0
-u_mass = 238.0
-
-# Line numbers of the particles of interest
-u = 4
-o1 = 3
-o2 = 5
-ion = 6
-
-# System information
-xbox = 3.24997
-ybox = 3.24997
-zbox = 3.24997
-num_particles = int(sys.argv[2])
-
-# Simulation Information
-num_simulations = int(sys.argv[1])
-num_frames      = 601
-time_step       = 0.005 # 1.0 fs
 
 # Based on the inputs above, some quantities that are needed...
 runtime         = time_step*num_frames
 half_xbox       = xbox/2.0
 half_ybox       = ybox/2.0
 half_zbox       = zbox/2.0
-
 frame_length    = num_particles + 3 # GROMACS prints a few extra lines, we need the true frame length.
+
 u_num   = u - 1
 o1_num  = o1 - 1
 o2_num  = o2 - 1
