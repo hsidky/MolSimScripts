@@ -6,7 +6,6 @@
 import os
 import numpy as np
 import math
-import re
 import sys
 
 def usage():
@@ -15,10 +14,10 @@ def usage():
 
 def getCoordinates(line):
 		"""Parses coordinates from .gro file."""
-		parsed_line = re.match('^[\s]+[0-9A-Za-z]+[\s\t]+[0-9A-Za-z]+[\s\t]+[0-9][\s\t]+([0-9.-]+)[\s\t]+([0-9.-]+)[\s\t]+([0-9.-]{5}).*$', line)
-		x = float(parsed_line.groups(1)[0])
-		y = float(parsed_line.groups(2)[1])
-		z = float(parsed_line.groups(3)[2])
+		this_line = line.split()
+		x = float(this_line[3])
+		y = float(this_line[4])
+		z = float(this_line[5])
 		return([x, y, z])
 
 def COM(coordinate_list, mass_list):
@@ -164,8 +163,8 @@ for sim in range (1, num_simulations+1):
 					coordinate_list = []
 					mass_list = []
 					for atom in molecule:
-						coordinate_list.append(getCoordinates(atom[0]+1))
-						masses.append(atom[1])
+						coordinate_list.append(getCoordinates(thisgro[atom[0]+1]))
+						mass_list.append(atom[1])
 					COMs.append(COM(coordinate_list, mass_list))
 			# Find displacement vector between them, along with magnitude
 			disp = wrap(displacement(COMs[0], COMs[1]))
@@ -179,8 +178,8 @@ for sim in range (1, num_simulations+1):
 					coordinate_list = []
 					mass_list = []
 					for atom in molecule:
-						coordinate_list.append(getCoordinates(frame_length+atom[0]+1))
-						masses.append(atom[1])
+						coordinate_list.append(getCoordinates(thisgro[frame_length+atom[0]+1]))
+						mass_list.append(atom[1])
 					COMs.append(COM(coordinate_list, mass_list))
 				# Find displacement vector between them, along with magnitude
 				disp2 = wrap(displacement(COMs[0], COMs[1]))
