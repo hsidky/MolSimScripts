@@ -105,9 +105,10 @@ def normalize(list1):
 # Try to parse system info, otherwise give the user the usage()
 try:
 	molecules = []
-	num_simulations = int(input("Number of simulations to analyze: "))
+	num_simulations = int(input("Number of simulations to analyze (forwards and backwards): "))
 	num_particles   = int(input("Total particles in a frame: ")) # This may not be necessary.
 	num_frames      = int(input("Number of frames to analyze: ")) # Also may not be nece
+	runtime         = float(input("Simulation runtime (ps): "))
 	time_step       = float(input("Time step: "))
 	xbox            = float(input("Box Vector X (nm) "))
 	ybox            = float(input("Box Vector Y (nm) "))
@@ -124,13 +125,12 @@ try:
 			this_molecule.append([atom_id, mass])
 			answer = input("Add another atom to molecule {0}".format(molecule+1))
 		molecules.append(this_molecule)
-	print("Cool - everything look's good.  We're ready to go.")
+	print("Cool - everything looks good.  We're ready to go.")
 except:
 	usage()
 	exit()
 
 # Based on the inputs above, some quantities that are needed...
-runtime         = time_step*num_frames
 half_xbox       = xbox/2.0
 half_ybox       = ybox/2.0
 half_zbox       = zbox/2.0
@@ -163,7 +163,7 @@ for sim in range (1, num_simulations+1):
 					coordinate_list = []
 					mass_list = []
 					for atom in molecule:
-						coordinate_list.append(getCoordinates(thisgro[atom[0]+1]))
+						coordinate_list.append(getCoordinates(thisgro[1+frame+atom[0]]))
 						mass_list.append(atom[1])
 					COMs.append(COM(coordinate_list, mass_list))
 			# Find displacement vector between them, along with magnitude
@@ -171,6 +171,7 @@ for sim in range (1, num_simulations+1):
 			mag_disp = magnitude(disp)
 			# If analyzing the first frame, extract rdot(0)
 			if first_frames.index(frame) == 0:
+				COMs = []
 				# Define Transition State Location
 				ts_loc = magnitude(disp)
 				# Find COMs at the second frame.
@@ -178,7 +179,7 @@ for sim in range (1, num_simulations+1):
 					coordinate_list = []
 					mass_list = []
 					for atom in molecule:
-						coordinate_list.append(getCoordinates(thisgro[frame_length+atom[0]+1]))
+						coordinate_list.append(getCoordinates(thisgro[frame+frame_length+atom[0]+1]))
 						mass_list.append(atom[1])
 					COMs.append(COM(coordinate_list, mass_list))
 				# Find displacement vector between them, along with magnitude
