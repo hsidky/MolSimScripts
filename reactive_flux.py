@@ -1,6 +1,6 @@
 #!/afs/crc.nd.edu/x86_64_linux/python/3.4.0/gcc-4.8.0/bin/python3
 ''' reactive_flux.py - Calculates the normalized reactive flux, k(t),
-	from a set of GROMACS simulations started at the maximum of the 
+	from a set of GROMACS simulations started at the maximum of the
 	free energy barrier. Currently supports bimolecular reactions.
 '''
 import os
@@ -9,11 +9,10 @@ import math
 import sys
 
 def usage():
-	print("Something went wrong.")
-	print("Your usage must be crazy. This code has no bugs.")
+	print("Something went wrong. Please check your inputs.")
 
 def getCoordinates(line):
-		"""Parses coordinates from .gro file."""
+		"""Parses coordinates from a particular line of a .gro file."""
 		this_line = line.split()
 		x = float(this_line[3])
 		y = float(this_line[4])
@@ -123,7 +122,7 @@ try:
 			atom_id = int(input("Atom ID: "))
 			mass    = float(input("Atom Mass: "))
 			this_molecule.append([atom_id, mass])
-			answer = input("Add another atom to molecule {0}".format(molecule+1))
+			answer = input("Add another atom to molecule {0}? ".format(molecule+1))
 		molecules.append(this_molecule)
 	print("Cool - everything looks good.  We're ready to go.")
 except:
@@ -142,7 +141,6 @@ first_frames = list(np.arange(0, frame_length*num_frames, frame_length))
 ktnum = [0 for i in range(0, num_frames)]
 ktden = [0 for i in range(0, num_frames)]
 
-# Loop over all 1000 simulations (500 forward, 500 reverse)
 for sim in range (1, num_simulations+1):
 	sys.stdout.write("\rAnalyzing simulation {0}/{1}...".format(sim, num_simulations))
 	sys.stdout.flush()
@@ -155,7 +153,7 @@ for sim in range (1, num_simulations+1):
 			with open("{0}/nvt{0}r.gro".format(sim), "r") as f:
 				thisgro = f.readlines()
 
-		# Loop over all 1401 frames
+		# Loop over all frames
 		for frame in first_frames:
 			# Find molecule center of masses
 			COMs = []
@@ -200,7 +198,7 @@ print("Analysis finished. Producing final reactive flux function, k(t).")
 # Produce k(t) from numerator and denominator lists
 kt = list_divide(ktnum, ktden)
 print("Transmission Coefficient Estimate: {0}".format(kt[-1]))
-	
+
 print("Saving data.")
 save_file = open("data", 'w')
 for frame in range(0,num_frames-1):
