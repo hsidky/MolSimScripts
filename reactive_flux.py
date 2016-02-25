@@ -8,16 +8,13 @@ import numpy as np
 import math
 import sys
 
-def usage():
-	print("Something went wrong. Please check your inputs.")
-
 def getCoordinates(line):
-		"""Parses coordinates from a particular line of a .gro file."""
-		this_line = line.split()
-		x = float(this_line[3])
-		y = float(this_line[4])
-		z = float(this_line[5])
-		return([x, y, z])
+	"""Parses coordinates from a particular line of a .gro file."""
+	this_line = line.split()
+	x = float(this_line[3])
+	y = float(this_line[4])
+	z = float(this_line[5])
+	return([x, y, z])
 
 def COM(coordinate_list, mass_list):
 	"""Calculates the center of mass vector of a molecule."""
@@ -92,13 +89,14 @@ def list_divide(list1, list2):
 	return final_list
 
 def normalize(list1):
-	fi
-	nal_list = []
+	final_list = []
 	normalization = list1[0]
 	for i in range(0, len(list1)):
 		final_list.append(list1[i]/normalization)
 	return final_list
 
+def usage():
+	print("Something went wrong. Please check your inputs.")
 
 ## USER INPUT ##
 # Try to parse system info, otherwise give the user the usage()
@@ -136,7 +134,7 @@ half_zbox       = zbox/2.0
 frame_length    = num_particles + 3 # GROMACS prints a few extra lines, we need the true frame length.
 
 ## Data structure initialization
-time = list(np.arange(0.00000, runtime + 0.0001, time_step))
+time = list(np.linspace(0.00000, runtime + 0.0001, num_frames))
 first_frames = list(np.arange(0, frame_length*num_frames, frame_length))
 ktnum = [0 for i in range(0, num_frames)]
 ktden = [0 for i in range(0, num_frames)]
