@@ -97,31 +97,46 @@ def normalize(list1):
 
 def usage():
 	print("Something went wrong. Please check your inputs.")
+	print("There three input files required:")
+	print("1) ./settings")
+	print("""num_simulations = int(settings_list[0])
+			num_particles   = int(settings_list[1])
+			num_frames      = int(settings_list[2])
+			runtime         = float(settings_list[3])
+			time_step       = float(settings_list[4])
+			xbox            = float(settings_list[5])
+			ybox            = float(settings_list[6])
+			zbox            = float(settings_list[7])
+			ts_loc_approx   = float(settings_list[8])""")
+	print("2) ./molecule1")
+	print("""atom_id1 atom_mass1
+			atom_id2 atom_mass2...""")
+	print("3) ./molecule2")
 
 ## USER INPUT ##
 # Try to parse system info, otherwise give the user the usage()
 try:
 	molecules = []
-	num_simulations = int(input("Number of simulations to analyze (forwards and backwards): "))
-	num_particles   = int(input("Total particles in a frame: ")) # This may not be necessary.
-	num_frames      = int(input("Number of frames to analyze: ")) # Also may not be nece
-	runtime         = float(input("Simulation runtime (ps): "))
-	time_step       = float(input("Time step: "))
-	xbox            = float(input("Box Vector X (nm) "))
-	ybox            = float(input("Box Vector Y (nm) "))
-	zbox            = float(input("Box Vector Z (nm) "))
-	print("Basic system information read in successfully.")
-	print("Now, I need information about the two molecules to track.")
+	with open('settings', 'r') as settings_file:
+		settings_list = settings_file.readlines()
+		num_simulations = int(settings_list[0])
+		num_particles   = int(settings_list[1])
+		num_frames      = int(settings_list[2])
+		runtime         = float(settings_list[3])
+		time_step       = float(settings_list[4])
+		xbox            = float(settings_list[5])
+		ybox            = float(settings_list[6])
+		zbox            = float(settings_list[7])
+		ts_loc_approx   = float(settings_list[8])
+		print("Read in ./settings successfully.")
 	for molecule in range(0, 2):
-		print("Molecule {0}, Atomic Constituents:".format(molecule+1))
-		answer = "y"
-		this_molecule = []
-		while answer == "y":
-			atom_id = int(input("Atom ID: "))
-			mass    = float(input("Atom Mass: "))
-			this_molecule.append([atom_id, mass])
-			answer = input("Add another atom to molecule {0}? ".format(molecule+1))
+		with open('molecule{0}'.format(molecule+1), 'r') as molecule1_file:
+			this_molecule = []
+			for line in molecule1_file.readlines():
+				this_line = line.split()
+				this_molecule.append([int(this_line[0]), float(this_line[1])])
 		molecules.append(this_molecule)
+		print("Read in ./molecule{0} sucessfully.".format(molecule))
 	print("Cool - everything looks good.  We're ready to go.")
 except:
 	usage()
@@ -138,7 +153,7 @@ time = list(np.linspace(0.00000, runtime + 0.0001, num_frames))
 first_frames = list(np.arange(0, frame_length*num_frames, frame_length))
 ktnum = [0 for i in range(0, num_frames)]
 ktden = [0 for i in range(0, num_frames)]
-
+inc_pts = 0
 for sim in range (1, num_simulations+1):
 	sys.stdout.write("\rAnalyzing simulation {0}/{1}...".format(sim, num_simulations))
 	sys.stdout.flush()
@@ -170,6 +185,8 @@ for sim in range (1, num_simulations+1):
 				COMs = []
 				# Define Transition State Location
 				ts_loc = magnitude(disp)
+				if abs(ts_loc - ts_loc_approx) > 0.05:
+					break
 				# Find COMs at the second frame.
 				for molecule in molecules:
 					coordinate_list = []
@@ -185,6 +202,7 @@ for sim in range (1, num_simulations+1):
 				rdotzero = (mag_disp2 - mag_disp)/time_step
 				# Calculate Heavyside(rdot(0))
 				hs_rdotzero = heavyside(rdotzero, index=first_frames.index(frame), rdotzero=rdotzero)
+				inc_pts += 1
 			# Calculate Heavyside(r(t) - ts_loc)
 			hs_rt_ts_loc = heavyside(mag_disp - ts_loc, index=first_frames.index(frame), rdotzero=rdotzero)
 
@@ -192,6 +210,7 @@ for sim in range (1, num_simulations+1):
 			ktnum[first_frames.index(frame)] += (rdotzero*hs_rt_ts_loc)
 			ktden[first_frames.index(frame)] += (rdotzero*hs_rdotzero)
 print("Analysis finished. Producing final reactive flux function, k(t).")
+print("Included {0} data points.".format(inc_pts))
 
 # Produce k(t) from numerator and denominator lists
 kt = list_divide(ktnum, ktden)
