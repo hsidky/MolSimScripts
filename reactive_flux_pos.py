@@ -30,9 +30,14 @@ def list_divide(list1, list2):
 ## Data structure initialization
 num_frames = 600
 num_simulations = 500
-ktnum = [0 for i in range(0, num_frames)]
-ktden = [0 for i in range(0, num_frames)]
+
+## Positive (PF) expression
+ktfor = [0 for i in range(0, num_frames)]
+ktbac = [0 for i in range(0, num_frames)]
+ktden = [0 for i in range(o, num_frames)]
+
 timelist = np.linspace(0.000, 3.000, num_frames).tolist()
+
 for sim in range (1, num_simulations+1):
 	sys.stdout.write("\rAnalyzing simulation {0}/{1}...".format(sim, num_simulations))
 	sys.stdout.flush()
