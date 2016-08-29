@@ -26,10 +26,10 @@ def roundf(x):
 
 
 def apply_min_image(H,x):
-    s = np.dot(la.inv(H),x)
+    s = np.array([x[0]/H[0,0],x[1]/H[1,1],x[2]/H[2,2]])
     for i in range(0,3):
         s[i] -= roundf(s[i])
-    return np.dot(H,s)
+    return np.array([s[0]*H[0,0],s[1]*H[1,1],s[2]*H[2,2]])
 
 
 with open(args.input, 'r') as fin:
@@ -100,11 +100,11 @@ with open(args.input, 'r') as fin:
 
 				# Unwrap positions.
 				for i in range(1,len(ind)):
-				    j = ind[i-1]
+				#    j = ind[i-1]
 				    k = ind[i]
 				    u[k,:] = ui
 				    v[k,:] = vi
-				    x[k,:] = apply_min_image(H,x[k,:]-x[first,:])+x[first,:]
+				#    x[k,:] = apply_min_image(H,x[k,:]-x[first,:])+x[first,:]
 
 			fout.write("{0}\n".format(n))
 			fout.write('{0} {1} {2}\n'.format(H[0,0], H[1,1], H[2,2]))
