@@ -7,217 +7,440 @@ import os
 import numpy as np
 import math
 import sys
+import time
 
-def getCoordinates(line):
-	"""Parses coordinates from a particular line of a .gro file."""
-	this_line = line.split()
-	x = float(this_line[3])
-	y = float(this_line[4])
-	z = float(this_line[5])
-	return([x, y, z])
-
-def COM(coordinate_list, mass_list):
-	"""Calculates the center of mass vector of a molecule."""
-	totalmass = sum(mass_list)
-	xcom = 0
-	ycom = 0
-	zcom = 0
-	for coordinate in coordinate_list:
-		xcom += coordinate[0]*mass_list[coordinate_list.index(coordinate)]
-		ycom += coordinate[1]*mass_list[coordinate_list.index(coordinate)]
-		zcom += coordinate[2]*mass_list[coordinate_list.index(coordinate)]
-	xcom /= totalmass
-	ycom /= totalmass
-	zcom /= totalmass
-	return([xcom, ycom, zcom])
-
-def displacement(vec1, vec2):
-	"""Find the displacement vector connecting two vectors."""
-	dx = vec1[0] - vec2[0]
-	dy = vec1[1] - vec2[1]
-	dz = vec1[2] - vec2[2]
-	return [dx, dy, dz]
-
-def magnitude(vec):
-	"""Find the magnitude of a vector"""
-	return(math.sqrt(vec[0]**2 + vec[1]**2 + vec[2]**2))
-
-def dot_product(vec1, vec2):
-	"""Calculate the dot product of two vectors."""
-	return (vec1[0]*vec2[0] + vec1[1]*vec2[1] + vec1[2]*vec2[2])
-
-def wrap(vec):
-	"""Wrap the box."""
-	if vec[0] > half_xbox:
-		vec[0] -= xbox
-	elif vec[0] < -half_xbox:
-		vec[0] += xbox
-	if vec[1] > half_ybox:
-		vec[1] -= ybox
-	elif vec[1] < -half_ybox:
-		vec[1] += ybox
-	if vec[2] > half_zbox:
-		vec[2] -= zbox
-	elif vec[2] < -half_zbox:
-		vec[2] += zbox
-	return vec
-
-def heavyside(arg, index = 1 , rdotzero = 1):
-	if index == 0:
-		if rdotzero > 0:
+def heavyside(arg, i=1, rdz=1):
+	if i == 0:
+		if rdz >= 0:
 			return 1.0
 		else:
 			return 0.0
-	if arg > 0:
+	if arg >= 0:
 		return 1.0
 	if arg < 0:
 		return 0.0
-	if arg == 0:
-		return 0.5
-
-def divide(list1, divisor):
-	"""Returns a single list from two lists, dividing the values of the first list by the values of the second."""
-	final_list = []
-	for i in range(0, len(list1)):
-		final_list.append(list1[i]/divisor)
-	return final_list
 
 def list_divide(list1, list2):
 	final_list = []
 	for i in range(0, len(list1)):
-		final_list.append(list1[i]/list2[i])
+		if list2[i] == 0:
+			final_list.append(0)
+		else:
+			final_list.append(list1[i]/list2[i])
 	return final_list
 
-def normalize(list1):
+def list_subtract(list1, list2):
 	final_list = []
-	normalization = list1[0]
 	for i in range(0, len(list1)):
-		final_list.append(list1[i]/normalization)
+		final_list.append(list1[i] - list2[i])
 	return final_list
 
-def usage():
-	print("Something went wrong. Please check your inputs.")
-	print("There three input files required:")
-	print("1) ./settings")
-	print("""num_simulations = int(settings_list[0])
-			num_particles   = int(settings_list[1])
-			num_frames      = int(settings_list[2])
-			runtime         = float(settings_list[3])
-			time_step       = float(settings_list[4])
-			xbox            = float(settings_list[5])
-			ybox            = float(settings_list[6])
-			zbox            = float(settings_list[7])
-			ts_loc_approx   = float(settings_list[8])""")
-	print("2) ./molecule1")
-	print("""atom_id1 atom_mass1
-			atom_id2 atom_mass2...""")
-	print("3) ./molecule2")
+def minimage(x, y, z):
+	if x > boxx/2.0:
+		x -= boxx
+	elif x < -boxx/2.0:
+		x += boxx
+	if y > boxy/2.0:
+		y -= boxy
+	elif y < -boxy/2.0:
+		y += boxy
+	if z > boxz/2.0:
+		z -= boxz
+	elif z < -boxz/2.0:
+		z += boxz
+	return [x, y, z]
 
-## USER INPUT ##
-# Try to parse system info, otherwise give the user the usage()
-try:
-	molecules = []
-	with open('settings', 'r') as settings_file:
-		settings_list = settings_file.readlines()
-		num_simulations = int(settings_list[0])
-		num_particles   = int(settings_list[1])
-		num_frames      = int(settings_list[2])
-		runtime         = float(settings_list[3])
-		time_step       = float(settings_list[4])
-		xbox            = float(settings_list[5])
-		ybox            = float(settings_list[6])
-		zbox            = float(settings_list[7])
-		ts_loc_approx   = float(settings_list[8])
-		print("Read in ./settings successfully.")
-	for molecule in range(0, 2):
-		with open('molecule{0}'.format(molecule+1), 'r') as molecule1_file:
-			this_molecule = []
-			for line in molecule1_file.readlines():
-				this_line = line.split()
-				this_molecule.append([int(this_line[0]), float(this_line[1])])
-		molecules.append(this_molecule)
-		print("Read in ./molecule{0} sucessfully.".format(molecule))
-	print("Cool - everything looks good.  We're ready to go.")
-except:
-	usage()
-	exit()
+def covariance(A, B):
+	'''Calculates the covariance between two data sets.'''
+	# Calculate the mean of A and B, respectively
+	muA = np.mean(A)
+	muB = np.mean(B)
 
-# Based on the inputs above, some quantities that are needed...
-half_xbox       = xbox/2.0
-half_ybox       = ybox/2.0
-half_zbox       = zbox/2.0
-frame_length    = num_particles + 3 # GROMACS prints a few extra lines, we need the true frame length.
+	# Calculate covariance.
+	cov = 0
+	N = len(A)
+	for eA, eB in zip(A, B):
+		cov += ((eA-muA)*(eB-muB))/N
+	return cov
+
+def chi(backwards, tsloc):
+	'''Checks if the backwards trajectory recrosses the TS.'''
+	chilist = []
+	recrossed = False
+	for value in backwards:
+		if recrossed == True:
+			chilist.append(0)
+		else:
+			this_dist = float(value.split()[1])
+			if this_dist > tsloc:
+				chilist.append(0)
+				recrossed = True
+			else:
+				chilist.append(1)
+
+	return chilist
+# Check if we want a special RF function
+runtype = ''
+if len(sys.argv) == 2:
+	runtype = sys.argv[1]
+	print(runtype)
+if len(sys.argv) == 3:
+	runtype = sys.argv[1]
+	print(runtype)
 
 ## Data structure initialization
-time = list(np.linspace(0.00000, runtime + 0.0001, num_frames))
-first_frames = list(np.arange(0, frame_length*num_frames, frame_length))
-ktnum = [0 for i in range(0, num_frames)]
-ktden = [0 for i in range(0, num_frames)]
-inc_pts = 0
-if __name__ == 'main':
+num_frames = 600
+num_simulations = 2000
+ktnum  = [0 for i in range(0, num_frames+1)]
+ktnum2 = [0 for i in range(0, num_frames+1)]
+ktden  = [0 for i in range(0, num_frames+1)]
+timelist = np.linspace(0.000, 3.000, num_frames).tolist()
+lastnums = []
+lastdens = []
+
+# Get box size.
+boxlines = open('1/nvt1.gro', 'r').readlines()
+box = boxlines[-1].split()
+boxx = float(box[0])
+boxy = float(box[1])
+boxz = float(box[2])
+print("Detected box {0}, {1}, {2}".format(boxx, boxy, boxz))
+tslocs = []
+
+if runtype == '':
+	print("Calculating the Bennett-Chandler transmission coefficient.")
 	for sim in range (1, num_simulations+1):
 		sys.stdout.write("\rAnalyzing simulation {0}/{1}...".format(sim, num_simulations))
 		sys.stdout.flush()
 		for i in range(0,2):
-			thisgro = []
 			if i == 0: # forwards
-				with open("{0}/nvt{0}.gro".format(sim), "r") as f:
-					thisgro = f.readlines()
+				with open("{0}/distanceu.xvg".format(sim), "r") as f:
+					udistfile = f.readlines()
+				with open("{0}/distancel.xvg".format(sim), "r") as f:
+					ldistfile = f.readlines()
+				with open("{0}/velocityu.xvg".format(sim), "r") as f:
+					uvelofile = f.readlines()
+				with open("{0}/velocityl.xvg".format(sim), "r") as f:
+					lvelofile = f.readlines()
+				with open("{0}/dist.xvg".format(sim), "r") as f:
+					distfile = f.readlines()
 			elif i == 1: # reverse
-				with open("{0}/nvt{0}r.gro".format(sim), "r") as f:
-					thisgro = f.readlines()
+				with open("{0}/distanceur.xvg".format(sim), "r") as f:
+					udistfile = f.readlines()
+				with open("{0}/distancelr.xvg".format(sim), "r") as f:
+					ldistfile = f.readlines()
+				with open("{0}/velocityur.xvg".format(sim), "r") as f:
+					uvelofile = f.readlines()
+				with open("{0}/velocitylr.xvg".format(sim), "r") as f:
+					lvelofile = f.readlines()
+				with open("{0}/distr.xvg".format(sim), "r") as f:
+					distfile = f.readlines()
 
-			# Loop over all frames
-			for frame in first_frames:
-				# Find molecule center of masses
-				COMs = []
-				for molecule in molecules:
-						coordinate_list = []
-						mass_list = []
-						for atom in molecule:
-							coordinate_list.append(getCoordinates(thisgro[1+frame+atom[0]]))
-							mass_list.append(atom[1])
-						COMs.append(COM(coordinate_list, mass_list))
-				# Find displacement vector between them, along with magnitude
-				disp = wrap(displacement(COMs[0], COMs[1]))
-				mag_disp = magnitude(disp)
-				# If analyzing the first frame, extract rdot(0)
-				if first_frames.index(frame) == 0:
-					COMs = []
-					# Define Transition State Location
-					ts_loc = magnitude(disp)
-					if abs(ts_loc - ts_loc_approx) > 0.05:
-						break
-					# Find COMs at the second frame.
-					for molecule in molecules:
-						coordinate_list = []
-						mass_list = []
-						for atom in molecule:
-							coordinate_list.append(getCoordinates(thisgro[frame+frame_length+atom[0]+1]))
-							mass_list.append(atom[1])
-						COMs.append(COM(coordinate_list, mass_list))
-					# Find displacement vector between them, along with magnitude
-					disp2 = wrap(displacement(COMs[0], COMs[1]))
-					mag_disp2 = magnitude(disp2)
-					# Calculate rdot(0)
-					rdotzero = (mag_disp2 - mag_disp)/time_step
-					# Calculate Heavyside(rdot(0))
-					hs_rdotzero = heavyside(rdotzero, index=first_frames.index(frame), rdotzero=rdotzero)
-					inc_pts += 1
-				# Calculate Heavyside(r(t) - ts_loc)
-				hs_rt_ts_loc = heavyside(mag_disp - ts_loc, index=first_frames.index(frame), rdotzero=rdotzero)
+			# Get r
+			tsloc = float(distfile[15].split()[1])
+			tslocs.append(tsloc)
+
+			# Get COM of U, L
+			UCOM = float(udistfile[24].split()[1]), float(udistfile[24].split()[2]), float(udistfile[24].split()[3])
+			LCOM = float(ldistfile[24].split()[1]), float(ldistfile[24].split()[2]), float(ldistfile[24].split()[3])
+
+			# Get COV of U, L
+			UCOV = float(uvelofile[24].split()[1]), float(uvelofile[24].split()[2]), float(uvelofile[24].split()[3])
+			LCOV = float(lvelofile[24].split()[1]), float(lvelofile[24].split()[2]), float(lvelofile[24].split()[3])
+
+			# Calculate dx, dy, dz
+			dx, dy, dz = minimage(UCOM[0]-LCOM[0], UCOM[1]-LCOM[1], UCOM[2]-LCOM[2])
+
+			# Calculate dvx, dvy, dvz
+			dvx = UCOV[0]-LCOV[0]
+			dvy = UCOV[1]-LCOV[1]
+			dvz = UCOV[2]-LCOV[2]
+
+			rdotzero = (dx*dvx + dy*dvy + dz*dvz)/(dx**2+dy**2+dz**2)**0.5
+			#print('New Rdotzero: {0}'.format(rdotzero))
+			#rdotzero = (distance2-tsloc)/0.005
+			#print('Old Rdotzero (finite difference): {0}'.format(rdotzero))
+			hs_rdotzero = heavyside(rdotzero)
+			# And loop over all distances:
+			i = 0
+			for line in distfile[15:]:
+				this_line = line.split()
+				distance = float(this_line[1])
+				hs_rt_ts_loc = heavyside(distance - tsloc, i, rdotzero)
 
 				# Calculate k(t) for that frame, append to lists
-				ktnum[first_frames.index(frame)] += (rdotzero*hs_rt_ts_loc)
-				ktden[first_frames.index(frame)] += (rdotzero*hs_rdotzero)
-	print("Analysis finished. Producing final reactive flux function, k(t).")
-print("Included {0} data points.".format(inc_pts))
+				ktnum[i] += (rdotzero*hs_rt_ts_loc)
+				ktden[i] += (rdotzero*hs_rdotzero)
+				i += 1
+	print("Analysis finished. Producing final reactive flux function, kbc(t).")
+	# Produce k(t) from numerator and denominator lists
+	kt = list_divide(ktnum, ktden)
 
-# Produce k(t) from numerator and denominator lists
-kt = list_divide(ktnum, ktden)
-print("Transmission Coefficient Estimate: {0}".format(kt[-1]))
+	print("Transmission Coefficient Estimate: {0}".format(np.mean(kt[-200:])))
+	print("Saving data.")
+	save_file = open("data", 'w')
+	for frame in range(0,num_frames-1):
+		save_file.write("{0} {1}\n".format(timelist[frame], kt[frame]))
+	save_file.close()
 
-print("Saving data.")
-save_file = open("data", 'w')
-for frame in range(0,num_frames-1):
-	save_file.write("{0} {1}\n".format(time[frame], kt[frame]))
+	#with open('tcoeff', 'a') as tcfile:
+	#	tcfile.write(str(np.mean(kt[-200:])))
+#		tcfile.write('\n')
+
+if runtype == 'bc2':
+	print("Calculating the Bennett-Chandler 2 transmission coefficient.")
+	for sim in range (1, num_simulations+1):
+		sys.stdout.write("\rAnalyzing simulation {0}/{1}...".format(sim, num_simulations))
+		sys.stdout.flush()
+		with open("{0}/distanceu.xvg".format(sim), "r") as f:
+			udistfile = f.readlines()
+		with open("{0}/distancel.xvg".format(sim), "r") as f:
+			ldistfile = f.readlines()
+		with open("{0}/velocityu.xvg".format(sim), "r") as f:
+			uvelofile = f.readlines()
+		with open("{0}/velocityl.xvg".format(sim), "r") as f:
+			lvelofile = f.readlines()
+		with open("{0}/dist.xvg".format(sim), "r") as f:
+			distfile = f.readlines()
+		with open("{0}/distr.xvg".format(sim), "r") as f:
+			distrfile = f.readlines()
+
+		# Check to see if the trajectory started at the right location.
+		# If so, extract rdot(0):
+		tsloc = float(distfile[15].split()[1])
+
+		# Get COM of U, L
+		UCOM = float(udistfile[24].split()[1]), float(udistfile[24].split()[2]), float(udistfile[24].split()[3])
+		LCOM = float(ldistfile[24].split()[1]), float(ldistfile[24].split()[2]), float(ldistfile[24].split()[3])
+
+		# Get COV of U, L
+		UCOV = float(uvelofile[24].split()[1]), float(uvelofile[24].split()[2]), float(uvelofile[24].split()[3])
+		LCOV = float(lvelofile[24].split()[1]), float(lvelofile[24].split()[2]), float(lvelofile[24].split()[3])
+
+		# Calculate dx, dy, dz
+		dx, dy, dz = minimage(UCOM[0]-LCOM[0], UCOM[1]-LCOM[1], UCOM[2]-LCOM[2])
+
+		# Calculate dvx, dvy, dvz
+		dvx = UCOV[0]-LCOV[0]
+		dvy = UCOV[1]-LCOV[1]
+		dvz = UCOV[2]-LCOV[2]
+
+		rdotzero = (dx*dvx + dy*dvy + dz*dvz)/(dx**2+dy**2+dz**2)**0.5
+		hs_rdotzero = heavyside(rdotzero)
+		# And loop over all distances:
+		i = 0
+		for fline, bline in zip(distfile[15:], distrfile[15:]):
+			this_fline = fline.split()
+			fdistance = float(this_fline[1])
+			this_bline = bline.split()
+			bdistance = float(this_bline[1])
+			hs_rt_ts_loc = heavyside(fdistance - tsloc, i, rdz=rdotzero)
+			hs_lt_ts_loc = heavyside(tsloc - bdistance, i, rdz=rdotzero)
+
+			# Calculate k(t) for that frame, append to lists
+			ktnum[i] += rdotzero*hs_rt_ts_loc*hs_lt_ts_loc
+			ktden[i] += rdotzero*hs_rdotzero
+			i += 1
+
+		# Save last frame of numerator and denominator to a list
+		lastnums.append(rdotzero*hs_rt_ts_loc*hs_lt_ts_loc)
+		lastdens.append(rdotzero*hs_rdotzero)
+
+	print("Analysis finished. Producing final reactive flux function, kbc2(t).")
+	# Produce k(t) from numerator and denominator lists
+	kt = list_divide(ktnum, ktden)
+
+	# Calculate transmission coefficient (last frame)
+	tc = np.mean(kt[-1:])
+
+	# Calculate error bars
+	sigmaK = (((np.std(lastnums)/ktnum[-1])**2) + ((np.std(lastdens)/ktden[-1])**2)-2*covariance(lastnums, lastdens)/(ktnum[-1]*ktden[-1]))**(1/2)
+	sigmafile = open('sigma', 'w')
+	sigmafile.write(str(sigmaK))
+	sigmafile.close()
+
+	print("Transmission Coefficient Estimate: {0}".format(tc))
+	print("Saving data.")
+	save_file = open("databc2", 'w')
+	for frame in range(0,num_frames-1):
+		save_file.write("{0} {1}\n".format(timelist[frame], kt[frame]))
+	save_file.close()
+	num_file = open('databc2num', 'w')
+	for frame in range(0, num_frames-1):
+		num_file.write("{0} {1}\n".format(timelist[frame], ktnum[frame]))
+	num_file.close()
+	den_file = open('databc2den', 'w')
+	for frame in range(0, num_frames-1):
+		den_file.write("{0} {1}\n".format(timelist[frame], ktden[frame]))
+	den_file.close()
+
+if runtype == 'pf':
+	print("Calculating the postive flux (PF) transmission coefficient.")
+	for sim in range (1, num_simulations+1):
+		sys.stdout.write("\rAnalyzing simulation {0}/{1}...".format(sim, num_simulations))
+		sys.stdout.flush()
+		with open("{0}/distanceu.xvg".format(sim), "r") as f:
+			udistfile = f.readlines()
+		with open("{0}/distancel.xvg".format(sim), "r") as f:
+			ldistfile = f.readlines()
+		with open("{0}/velocityu.xvg".format(sim), "r") as f:
+			uvelofile = f.readlines()
+		with open("{0}/velocityl.xvg".format(sim), "r") as f:
+			lvelofile = f.readlines()
+		with open("{0}/dist.xvg".format(sim), "r") as f:
+			distfile = f.readlines()
+		with open("{0}/distr.xvg".format(sim), "r") as f:
+			distrfile = f.readlines()
+
+		# Check to see if the trajectory started at the right location.
+		# If so, extract rdot(0):
+		# Check to see if the trajectory started at the right location.
+		# If so, extract rdot(0):
+		tsloc = float(distfile[15].split()[1])
+
+		# Get COM of U, L
+		UCOM = float(udistfile[24].split()[1]), float(udistfile[24].split()[2]), float(udistfile[24].split()[3])
+		LCOM = float(ldistfile[24].split()[1]), float(ldistfile[24].split()[2]), float(ldistfile[24].split()[3])
+
+		# Get COV of U, L
+		UCOV = float(uvelofile[24].split()[1]), float(uvelofile[24].split()[2]), float(uvelofile[24].split()[3])
+		LCOV = float(lvelofile[24].split()[1]), float(lvelofile[24].split()[2]), float(lvelofile[24].split()[3])
+
+		# Calculate dx, dy, dz
+		dx, dy, dz = minimage(UCOM[0]-LCOM[0], UCOM[1]-LCOM[1], UCOM[2]-LCOM[2])
+
+		# Calculate dvx, dvy, dvz
+		dvx = UCOV[0]-LCOV[0]
+		dvy = UCOV[1]-LCOV[1]
+		dvz = UCOV[2]-LCOV[2]
+
+		rdotzero = (dx*dvx + dy*dvy + dz*dvz)/(dx**2+dy**2+dz**2)**0.5
+		hs_rdotzero = heavyside(rdotzero)
+		chilist = chi(backwards, tsloc)
+		# And loop over all distances:
+		i = 0
+		for fline, bline in zip(distfile[15:], distrfile[15:]):
+			this_fline = fline.split()
+			fdistance = float(this_fline[1])
+			this_bline = bline.split()
+			bdistance = float(this_bline[1])
+			hs_rt_ts_loc = heavyside(fdistance - tsloc, i, rdz=rdotzero)
+			hs_lt_ts_loc = heavyside(bdistance - tsloc, i, rdz=rdotzero)
+
+			# Calculate k(t) for that frame, append to lists
+			ktnum[i]  += (rdotzero*hs_rdotzero*hs_rt_ts_loc)
+			ktnum2[i] += (rdotzero*hs_rdotzero*hs_lt_ts_loc)
+			ktden[i]  += (rdotzero*hs_rdotzero)
+			i += 1
+
+	print("Analysis finished. Producing final reactive flux function, kpf(t).")
+	# Produce k(t) from numerator and denominator lists
+	kt1 = list_divide(ktnum, ktden)
+	kt2 = list_divide(ktnum2, ktden)
+	kt = list_subtract(kt1, kt2)
+
+	print("Transmission Coefficient Estimate: {0}".format(np.mean(kt[-200:])))
+	print("Saving data.")
+	save_file = open("datapf", 'w')
+	for frame in range(0,num_frames-1):
+		save_file.write("{0} {1}\n".format(timelist[frame], kt[frame]))
+
+rdotzeros = []
+if runtype == 'epf':
+	print("Calculating the transmission coefficient via the effective positive flux (EPF) algorithm [RECOMMENDED].")
+	for sim in range (1, num_simulations+1):
+		sys.stdout.write("\rAnalyzing simulation {0}/{1}...".format(sim, num_simulations))
+		sys.stdout.flush()
+		with open("{0}/distanceu.xvg".format(sim), "r") as f:
+			udistfile = f.readlines()
+		with open("{0}/distancel.xvg".format(sim), "r") as f:
+			ldistfile = f.readlines()
+		with open("{0}/velocityu.xvg".format(sim), "r") as f:
+			uvelofile = f.readlines()
+		with open("{0}/velocityl.xvg".format(sim), "r") as f:
+			lvelofile = f.readlines()
+		with open("{0}/dist.xvg".format(sim), "r") as f:
+			distfile = f.readlines()
+		with open("{0}/distr.xvg".format(sim), "r") as f:
+			distrfile = f.readlines()
+
+		# Check to see if the trajectory started at the right location.
+		# If so, extract rdot(0):
+		tsloc = float(distfile[15].split()[1])
+
+		# Get COM of U, L
+		UCOM = float(udistfile[24].split()[1]), float(udistfile[24].split()[2]), float(udistfile[24].split()[3])
+		LCOM = float(ldistfile[24].split()[1]), float(ldistfile[24].split()[2]), float(ldistfile[24].split()[3])
+
+		# Get COV of U, L
+		UCOV = float(uvelofile[24].split()[1]), float(uvelofile[24].split()[2]), float(uvelofile[24].split()[3])
+		LCOV = float(lvelofile[24].split()[1]), float(lvelofile[24].split()[2]), float(lvelofile[24].split()[3])
+
+		# Calculate dx, dy, dz
+		dx, dy, dz = minimage(UCOM[0]-LCOM[0], UCOM[1]-LCOM[1], UCOM[2]-LCOM[2])
+
+		# Calculate dvx, dvy, dvz
+		dvx = UCOV[0]-LCOV[0]
+		dvy = UCOV[1]-LCOV[1]
+		dvz = UCOV[2]-LCOV[2]
+
+		# Calculate rdotzero and its heaviside
+		rdotzero = (dx*dvx + dy*dvy + dz*dvz)/(dx**2+dy**2+dz**2)**0.5
+		hs_rdotzero = heavyside(rdotzero)
+		rdotzeros.append(rdotzero*hs_rdotzero)
+
+		# Calculate the CHI function. (see van erp paper/powerpoint)
+		chilist = chi(distrfile[15:], tsloc)
+
+		# And loop over all distances:
+		i = 0
+		for fline in distfile[15:]:
+			this_fline = fline.split()
+			fdistance = float(this_fline[1])
+			hs_rt_ts_loc = heavyside(fdistance - tsloc, i, rdz=rdotzero)
+			# Calculate k(t) for that frame, append to lists
+			ktnum[i] += rdotzero*hs_rdotzero*chilist[i]*hs_rt_ts_loc
+			ktden[i] += rdotzero*hs_rdotzero
+			i += 1
+
+		# Save last frame of numerator and denominator to a list
+		lastnums.append(rdotzero*hs_rdotzero*chilist[i-1]*hs_rt_ts_loc)
+		lastdens.append(rdotzero*hs_rdotzero)
+
+	print("Analysis finished.")
+	# Produce k(t) from numerator and denominator lists
+	kt = list_divide(ktnum,ktden)
+
+	# Calculate error bars
+	sigmaA = np.std(lastnums)
+	sigmaB = np.std(lastdens)
+	A = ktnum[-1]/num_simulations
+	B = ktden[-1]/num_simulations
+	print("A: {0}".format(A))
+	print("B: {0}".format(B))
+	print("sigA: {0}".format(sigmaA))
+	print("sigB: {0}".format(sigmaB))
+	sigmaK = kt[-1]*((sigmaA/A)**2 + (sigmaB/B)**2 - (2*covariance(lastnums,lastdens)/(A*B)))**(0.5)
+	sigmaK = sigmaK/(num_simulations**0.5)
+	sigmafile = open('sigma', 'w')
+	sigmafile.write(str(sigmaK))
+	sigmafile.close()
+	print("ERROR: {0}".format(sigmaK))
+
+	print("Transmission Coefficient: {0}".format(kt[-1]))
+	print("Saving data.")
+	save_file = open("transmissioncoefficient", 'w')
+	for frame in range(0, num_frames-1):
+		save_file.write("{0} {1}\n".format(timelist[frame], kt[frame]))
+	save_file.close()
+	print("wrote.")
+
+    	print("AVERAGE rdotzerohsrdotzero: {0}".format(np.mean(rdotzeros)))
+	#num_file = open('databc2num', 'w')
+	#for frame in range(0, num_frames-1):
+	#	num_file.write("{0} {1}\n".format(timelist[frame], ktnum[frame]))
+	#num_file.close()
+	#den_file = open('databc2den', 'w')
+	#for frame in range(0, num_frames-1):
+	#	den_file.write("{0} {1}\n".format(timelist[frame], ktden[frame]))
+	#den_file.close()
