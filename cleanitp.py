@@ -149,6 +149,31 @@ def write_itp(filename):
                     dt[0], dt[1], dt[2], dt[3], dt[4], dt[5], dt[6], dt[7]))
 		f.write("\n")
 
+		f.write(" [ atoms ]\n")
+		f.write(";   id  type  resi  res   atom  cgnr     charge      mass\n")
+		for a in atoms:
+			f.write("{:>6d} {:>4s} {:>4d}  {:>5s}  {:>5s}  {:>4d}  {:10.6f} {:10.6f}\n".format(
+                    a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]))
+		f.write("\n")
+
+		f.write(" [ bonds ]\n")
+		f.write(";   ai     aj funct\n")
+		for b in bonds:
+			f.write("{:>6d} {:>6d} {:>3d}\n".format(b[0], b[1], b[2]))
+		f.write("\n")
+
+		f.write(" [ angles ]\n")
+		f.write(";   ai     aj     ak    funct\n")
+		for a in angles:
+			f.write("{:>6d} {:>6d} {:>6d} {:>6d}\n".format(a[0], a[1], a[2], a[3]))
+		f.write("\n")
+
+		f.write(" [ dihedrals ]\n")
+		f.write(";    i      j      k      l   func\n")
+		for d in dihedrals:
+			f.write("{:>6d} {:>6d} {:>6d} {:>6d} {:>4d}\n".format(d[0], d[1], d[2], d[3], d[4]))
+		f.write("\n")
+
 
 parser = argparse.ArgumentParser(description="Gromacs ITP file cleaner v0.1")
 parser.add_argument("-i", "--input", help="itp file to clean", required=True,
