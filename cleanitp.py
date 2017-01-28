@@ -109,12 +109,20 @@ def read_itp(filename):
 
 
 def write_itp(filename):
-	global bondtypes, angletypes, dihedraltypes
+	global atoms, bonds, angles, dihedrals, bondtypes, angletypes, dihedraltypes
 
 	# First we clean up the types so there are no duplicates.
+	atoms = list(set(atoms))
+	bonds = list(set(bonds))
+	angles = list(set(angles))
+	dihedrals = list(set(dihedrals))
 	bondtypes = list(set(bondtypes))
 	angletypes = list(set(angletypes))
 	dihedraltypes = list(set(dihedraltypes))
+	atoms.sort()
+	bonds.sort()
+	angles.sort()
+	dihedrals.sort(key=operator.itemgetter(4, 0, 1, 2, 3))
 	atomtypes.sort()
 	bondtypes.sort()
 	angletypes.sort()
