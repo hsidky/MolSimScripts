@@ -42,6 +42,15 @@ def read_itp(filename):
 			if "atomtypes" in line:
 				mode = "atomtypes"
 				continue
+			elif "bondtypes" in line:
+				mode = "bondtypes"
+				continue
+			elif "angletypes" in line:
+				mode = "angletypes"
+				continue
+			elif "dihedraltypes" in line:
+				mode = "dihedraltypes"
+				continue
 			elif "atoms" in line:
 				mode = "atoms"
 				continue
@@ -60,6 +69,22 @@ def read_itp(filename):
 				temp = line.split()
 				# type, sigma, epsilon
 				atomtypes.append((temp[0], float(temp[5]), float(temp[6])))
+			elif mode == "bondtypes":
+				temp = line.split()
+				bondtype = (temp[0], temp[1], int(temp[2]), float(temp[3]), float(temp[4]))
+				bondtypes.append(bondtype)
+			elif mode == "angletypes":
+				temp = line.split()
+				# type1, type2, type3, funct, theta, k
+				angletype = (temp[0], temp[1], temp[2], int(temp[3]),
+                             float(temp[4]), float(temp[5]))
+				angletypes.append(angletype)
+			elif mode == "dihedraltypes":
+				temp = line.split()
+				# type1, type2, type3, type4, func, phase, kd, pn
+				dihtype = (temp[0], temp[1], temp[2], temp[3], int(temp[4]),
+                          float(temp[5]), float(temp[6]), int(temp[7]))
+				dihedraltypes.append(dihtype)
 			elif mode == "atoms":
 				temp = line.split()
 				atom = (int(temp[0]), temp[1], int(temp[2]),
@@ -76,10 +101,11 @@ def read_itp(filename):
 				bond = (int(temp[0]), int(temp[1]), int(temp[2]))
 				bonds.append(bond)
 
-				# type1, type2, function, r, k
-				bondtype = (atomdict[bond[0]], atomdict[bond[1]],
-                            int(temp[2]), float(temp[3]), float(temp[4]))
-				bondtypes.append(bondtype)
+				if len(temp) > 3:
+					# type1, type2, function, r, k
+					bondtype = (atomdict[bond[0]], atomdict[bond[1]],
+                                int(temp[2]), float(temp[3]), float(temp[4]))
+					bondtypes.append(bondtype)
 			elif mode == "angles":
 				temp = line.split()
 
@@ -87,10 +113,11 @@ def read_itp(filename):
 				angle = (int(temp[0]), int(temp[1]), int(temp[2]), int(temp[3]))
 				angles.append(angle)
 
-				# type1, type2, type3, funct, theta, k
-				angletype = (atomdict[angle[0]], atomdict[angle[1]], atomdict[angle[2]],
-                             int(temp[3]), float(temp[4]), float(temp[5]))
-				angletypes.append(angletype)
+				if len(temp) > 4:
+					# type1, type2, type3, funct, theta, k
+					angletype = (atomdict[angle[0]], atomdict[angle[1]], atomdict[angle[2]],
+	                             int(temp[3]), float(temp[4]), float(temp[5]))
+					angletypes.append(angletype)
 			elif mode == "dihedrals":
 				temp = line.split()
 
@@ -102,20 +129,22 @@ def read_itp(filename):
 					print("Error: RB dihedrals not supported. Please upgrade to the 21st century.")
 					quit()
 
-				# type1, type2, type3, type4, func, phase, kd, pn
-				dihtype = (atomdict[dih[0]], atomdict[dih[1]], atomdict[dih[2]], atomdict[dih[3]],
-                           int(temp[4]), float(temp[5]), float(temp[6]), int(temp[7]))
-				dihedraltypes.append(dihtype)
+				if len(temp) > 5:
+					# type1, type2, type3, type4, func, phase, kd, pn
+					dihtype = (atomdict[dih[0]], atomdict[dih[1]], atomdict[dih[2]], atomdict[dih[3]],
+	                           int(temp[4]), float(temp[5]), float(temp[6]), int(temp[7]))
+					dihedraltypes.append(dihtype)
 
 
 def write_itp(filename):
-	global atoms, bonds, angles, dihedrals, bondtypes, angletypes, dihedraltypes
+	global atoms, bonds, angles, dihedrals, atomtypes, bondtypes, angletypes, dihedraltypes
 
 	# First we clean up the types so there are no duplicates.
 	atoms = list(set(atoms))
 	bonds = list(set(bonds))
 	angles = list(set(angles))
 	dihedrals = list(set(dihedrals))
+	atomtypes = list(set(atomtypes))
 	bondtypes = list(set(bondtypes))
 	angletypes = list(set(angletypes))
 	dihedraltypes = list(set(dihedraltypes))
